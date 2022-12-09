@@ -1,15 +1,14 @@
-import time
-
-import mysql.connector
 import numpy as np
 import pandas as pd
+import time
 
 from copy import deepcopy
 from datetime import datetime as dt, timedelta
-from threading import Event, Lock
+from threading import Lock
 from typing import Any, Iterable, Union
+from ..customtypes import MonitorDict
+from ..database.services import StromzaehlerServices
 
-from mysql.connector.connection import MySQLConnection
 
 
 def waitForMinuteChange() -> None:
@@ -24,26 +23,17 @@ def waitForMinuteChange() -> None:
     time.sleep(sleepTime)
 
 
-def ingestIntoDb(
-    monitor: dict[str, list[Union[dt, float]]]) -> None:
+def ingestIntoDb(monitor: MonitorDict) -> None:
 
-    # setup MySQL connection
-    mysqlConnection: MySQLConnection = mysql.connector.connect(
-        user="pythonConnection", host="192.168.178.23", database="zeroW")
-    # Cursor-Objekt auf dem die DB-Operationen ausgeführt werden
-    cursor = mysqlConnection.cursor()
+    # initialize Service-Layer for 'stromzaehler'-table
+    stromzaehlerServices: StromzaehlerServices = StromzaehlerServices()
     
-    # setup des insert-statement
-    sqlStatement: str = (
-        "INSERT INTO stromzaehler "
-        "(datetime, meanPower_perSec_kW, impulses_perSec) "
-        "VALUES "
-        "(%s, %s, %s)")
     # wird die in die MySQL-DB einzusetzenden Werte/Reihen aufnehmen
     values: list[list[Union[dt, float]]] = []
 
     while True:
 
+        # Prozedur soll immer nur zum Beginn einer neuen Minute durchlaufen
         waitForMinuteChange()
 
         # eine deepcopy des ursprünglichen monitor-dicts machen und anschließend
@@ -56,8 +46,8 @@ def ingestIntoDb(
                 # Schleife zurückgehen
                 continue
 
-            monitorCopy: dict[str, list[Any]] = deepcopy(monitor)
-            monitor.update(datetime=[], power_kW=[])
+            monitorCopy: MonitorDict = deepcopy(monitor)
+            monitor.update( {"datetime": [], "power_kW": []} )
         
         # einen aggregierten df erzeugen aus dem kopierten monitor-dict
         dfAgg: pd.DataFrame = (
@@ -112,8 +102,7 @@ def ingestIntoDb(
                         row.len])
 
         # in die MySQL-DB einfügen, bis auf die allerletzte Zeile
-        cursor.executemany(sqlStatement, values[:-1])
-        mysqlConnection.commit()
+        stromzaehlerServices.insertPowerConsumptionData(values[:-1])
 
         # so setzen, dass die allerletzte Zeile für den nächsten Durchlauf übrig
         # bleibt

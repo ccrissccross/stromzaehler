@@ -1,1 +1,2 @@
-from threads.dbingest import ingestIntoDb
+from .dbingest import ingestIntoDb
+from .main import mainThread
