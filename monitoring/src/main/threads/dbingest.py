@@ -4,7 +4,7 @@ import time
 
 from copy import deepcopy
 from datetime import datetime as dt, timedelta
-from threading import Lock
+from threading import Lock, Thread
 from typing import Any, Iterable, Union
 from ..customtypes import MonitorDict
 from ..database.services import StromzaehlerServices
@@ -23,7 +23,7 @@ def waitForMinuteChange() -> None:
     time.sleep(sleepTime)
 
 
-def ingestIntoDb(monitor: MonitorDict) -> None:
+def _ingestIntoDb(monitor: MonitorDict) -> None:
 
     # initialize Service-Layer for 'stromzaehler'-table
     stromzaehlerServices: StromzaehlerServices = StromzaehlerServices()
@@ -107,6 +107,11 @@ def ingestIntoDb(monitor: MonitorDict) -> None:
         # so setzen, dass die allerletzte Zeile für den nächsten Durchlauf übrig
         # bleibt
         values = values[-1:]
+
+
+def ingestIntoDb(monitor: MonitorDict) -> None:
+    ingestThread: Thread = Thread(target=_ingestIntoDb, args=([monitor]))
+    ingestThread.start()
 
 
 lock: Lock = Lock()
