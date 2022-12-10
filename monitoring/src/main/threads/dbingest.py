@@ -29,7 +29,7 @@ def _ingestIntoDb(monitor: MonitorDict) -> None:
     stromzaehlerServices: StromzaehlerServices = StromzaehlerServices()
     
     # wird die in die MySQL-DB einzusetzenden Werte/Reihen aufnehmen
-    values: list[list[Union[dt, float, int]]] = []
+    values: list[list[Union[dt, float]]] = []
 
     while True:
 
