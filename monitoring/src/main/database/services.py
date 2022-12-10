@@ -22,7 +22,8 @@ class StromzaehlerServices:
 
         aggConsumption: int = 0
         for (datetime, power_kW, agg_consumption_Wh) in self._repo.getAllRows():
-            queryRes["datetime"].append(datetime)
+            # print(datetime.astimezone(tz=None))
+            queryRes["datetime"].append(datetime.astimezone(tz=None))
             queryRes["power_kW"].append(power_kW)
             aggConsumption += agg_consumption_Wh
             queryRes["agg_consumption_Wh"].append(aggConsumption)
