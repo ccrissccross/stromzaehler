@@ -1,6 +1,7 @@
 from datetime import datetime as dt
 from typing import Union
 from .repo import StromzaehlerRepo
+from ..customtypes import StromzaehlerTableData
 
 
 class StromzaehlerServices:
@@ -10,12 +11,20 @@ class StromzaehlerServices:
     
     def insertPowerConsumptionData(
         self, values: list[list[Union[dt, float]]]) -> None:
-        """creates SQL-statement and calls _repo-method to execute statement"""
+        """calls appropriate _repo-method and passes data as parameter"""
+        self._repo.insertManyRows(values)
+    
+    def getPowerConsumptionData(self) -> StromzaehlerTableData:
+        """returns the ENTIRE table as TypedDict"""
 
-        sqlStatement: str = (
-            "INSERT INTO stromzaehler"
-            "(datetime, meanPower_perSec_kW, impulses_perSec) "
-            "VALUES "
-            "(%s, %s, %s)"
-        )
-        self._repo.insertManyRows(values, sqlStatement)
+        queryRes: StromzaehlerTableData = StromzaehlerTableData(
+            datetime=[], power_kW=[], agg_consumption_Wh=[])
+
+        aggConsumption: int = 0
+        for row in self._repo.getAllRows():
+            queryRes["datetime"].append(row[0])
+            queryRes["power_kW"].append(row[1])
+            aggConsumption += row[2]
+            queryRes["agg_consumption_Wh"].append(aggConsumption)
+        
+        return queryRes

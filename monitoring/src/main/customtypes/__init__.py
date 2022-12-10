@@ -1,1 +1,1 @@
-from .typeddicts import MonitorDict
+from .typeddicts import MonitorDict, StromzaehlerTableData
