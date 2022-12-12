@@ -49,6 +49,14 @@ def _ingestIntoDb(monitor: MonitorDict) -> None:
             monitorCopy: MonitorDict = deepcopy(monitor)
             monitor.update( {"datetime": [], "power_kW": []} )
         
+        # die länge der beiden Arrays ist nicht identisch wenn Programm bei 
+        # heavy load abbricht. demzufolge schauen was los ist
+        lenDatetime: int = len(monitorCopy["datetime"])
+        lenPowerKw: int = len(monitorCopy["power_kW"])
+        if lenDatetime != lenPowerKw:
+            # wird in die logs.log datei geschrieben
+            print(monitorCopy)
+
         # einen aggregierten df erzeugen aus dem kopierten monitor-dict
         dfAgg: pd.DataFrame = (
             pd.DataFrame(data=monitorCopy)
