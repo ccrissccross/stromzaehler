@@ -23,7 +23,7 @@ def waitForMinuteChange() -> None:
     time.sleep(sleepTime)
 
 
-def _ingestIntoDb(monitor: MonitorDict) -> None:
+def _ingestIntoDb(monitor: MonitorDict, lock: Lock) -> None:
 
     # initialize Service-Layer for 'stromzaehler'-table
     stromzaehlerServices: StromzaehlerServices = StromzaehlerServices()
@@ -48,14 +48,6 @@ def _ingestIntoDb(monitor: MonitorDict) -> None:
 
             monitorCopy: MonitorDict = deepcopy(monitor)
             monitor.update( {"datetime": [], "power_kW": []} )
-        
-        # die länge der beiden Arrays ist nicht identisch wenn Programm bei 
-        # heavy load abbricht. demzufolge schauen was los ist
-        lenDatetime: int = len(monitorCopy["datetime"])
-        lenPowerKw: int = len(monitorCopy["power_kW"])
-        if lenDatetime != lenPowerKw:
-            # wird in die logs.log datei geschrieben
-            print(monitorCopy)
 
         # einen aggregierten df erzeugen aus dem kopierten monitor-dict
         dfAgg: pd.DataFrame = (
@@ -117,9 +109,6 @@ def _ingestIntoDb(monitor: MonitorDict) -> None:
         values = values[-1:]
 
 
-def ingestIntoDb(monitor: MonitorDict) -> None:
-    ingestThread: Thread = Thread(target=_ingestIntoDb, args=([monitor]))
+def ingestIntoDb(monitor: MonitorDict, lock: Lock) -> None:
+    ingestThread: Thread = Thread(target=_ingestIntoDb, args=([monitor, lock]))
     ingestThread.start()
-
-
-lock: Lock = Lock()
