@@ -1,7 +1,7 @@
 from datetime import datetime as dt
 from typing import Union
 from .repo import StromzaehlerRepo
-from ..customtypes import StromzaehlerTableData
+from ..customtypes import StromzaehlerTableData, SqlServerResultStromzaehler
 
 
 class StromzaehlerServices:
@@ -14,18 +14,16 @@ class StromzaehlerServices:
         """calls appropriate _repo-method and passes data as parameter"""
         self._repo.insertManyRows(values)
     
-    def getPowerConsumptionData(self) -> StromzaehlerTableData:
-        """returns the ENTIRE table as TypedDict"""
+    def getPowerConsumptionData(self) -> SqlServerResultStromzaehler:
+        """returns the ENTIRE table as a SqlServerResult-TypedDict"""
 
-        queryRes: StromzaehlerTableData = StromzaehlerTableData(
-            datetime=[], power_kW=[], agg_consumption_Wh=[])
+        queryFailed: bool
+        allRows: StromzaehlerTableData
+        queryFailed, allRows = self._repo.getAllRows()
 
-        aggConsumption: int = 0
-        for (datetime, power_kW, agg_consumption_Wh) in self._repo.getAllRows():
-            # print(datetime.astimezone(tz=None))
-            queryRes["datetime"].append(datetime.astimezone(tz=None))
-            queryRes["power_kW"].append(power_kW)
-            aggConsumption += agg_consumption_Wh
-            queryRes["agg_consumption_Wh"].append(aggConsumption)
-        
-        return queryRes
+        if queryFailed:
+            return SqlServerResultStromzaehler(
+                status_code=500, data=allRows)
+        else:
+            return SqlServerResultStromzaehler(
+                status_code=200, data=allRows)

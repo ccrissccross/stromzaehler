@@ -1,20 +1,24 @@
+import logging
+
 from datetime import datetime as dt
-from mysql.connector.connection import MySQLConnection
-from mysql.connector.cursor import MySQLCursor
+from mysql.connector import errorcode
+from mysql.connector.errors import DatabaseError
 from typing import Union
+from .connection import CursorZeroW
+from ..customtypes import StromzaehlerTableData
 
 
 class StromzaehlerRepo:
 
     def __init__(self) -> None:
-        # setup MySQL connection
-        self._mysqlConnection: MySQLConnection = MySQLConnection(
-            user="pythonConnection",
-            host="192.168.178.23",
-            database="zeroW",
-            autocommit=True)
-        # Cursor-Objekt auf dem die DB-Operationen ausgeführt werden
-        self._cursor: MySQLCursor = MySQLCursor(self._mysqlConnection)#.cursor()
+        # custom Cursor-Objekt auf dem die DB-Operationen ausgeführt werden
+        self._cursorZeroW: CursorZeroW = CursorZeroW()
+        # initialize logger...
+        self._repoLogger: logging.Logger = logging.getLogger(__name__)
+        gunicornLogger: logging.Logger = logging.getLogger('gunicorn.error')
+        # ... and now wire the gunicorn-logger to this class' self._repoLogger
+        self._repoLogger.handlers = gunicornLogger.handlers
+        self._repoLogger.setLevel(gunicornLogger.level)
     
     def insertManyRows(self, rows: list[list[Union[dt, float]]]) -> None:
         """inserts many rows into the 'stromzaehler'-table"""
@@ -24,13 +28,51 @@ class StromzaehlerRepo:
             "VALUES "
             "(%s, %s, %s)"
         )
-        self._cursor.executemany(sqlStatement, rows)
-        # self._mysqlConnection.commit()
+        self._cursorZeroW.executemany(sqlStatement, rows)
     
-    def getAllRows(self) -> list[tuple[dt, float, int]]:
+    def getAllRows(self, implicit: bool=True) -> tuple[bool, StromzaehlerTableData]:
         """returns entire table as list of tuples"""
-        sqlStatement: str = (
-            "SELECT * FROM stromzaehler"
-        )
-        self._cursor.execute(sqlStatement)
-        return self._cursor.fetchall()
+
+        sqlStatement: str = ("SELECT * FROM stromzaehler")
+
+        # initialize Result-set
+        queryFailed: bool = False
+        queryRes: StromzaehlerTableData = StromzaehlerTableData(
+            datetime=[], power_kW=[], agg_consumption_Wh=[])
+
+        try:
+
+            self._cursorZeroW.execute(sqlStatement)
+
+        except DatabaseError as dbError:
+
+            self._repoLogger.exception(dbError.msg)
+
+            if dbError.errno == errorcode.ER_CLIENT_INTERACTION_TIMEOUT:
+                # connection was inactive for too long, reconnect
+                self._cursorZeroW.reconnectCursor()
+                # call method again, after Cursor-Reconnection, but prevent
+                # another implicit method-call
+                if implicit == True:
+                    self._repoLogger.log(logging.INFO, f"call {__name__}.getAllRows() again")
+                    self.getAllRows(implicit=False)
+            else:
+                # a different DB-Error has happened, log for now
+                queryFailed = True
+
+        except Exception as e:
+
+            queryFailed = True
+            self._repoLogger.exception(e.args)
+
+        else:
+
+            # no Exception got thrown, query successful
+            aggConsumption: int = 0
+            for (datetime, power_kW, agg_consumption_Wh) in self._cursorZeroW.fetchall():# self._repo.getAllRows():
+                queryRes["datetime"].append(datetime.astimezone(tz=None))
+                queryRes["power_kW"].append(power_kW)
+                aggConsumption += agg_consumption_Wh
+                queryRes["agg_consumption_Wh"].append(aggConsumption)
+            
+        return  queryFailed, queryRes

@@ -1,5 +1,6 @@
-from flask import Flask, request, make_response
+from flask import Flask, make_response
 from flask.wrappers import Response
+from ....monitoring.src.main.customtypes import SqlServerResultStromzaehler
 from ....monitoring.src.main.database.services import StromzaehlerServices
 
 
@@ -11,12 +12,11 @@ app = Flask(__name__)
 
 @app.get("/")
 def getPowerConsumptionData():
-    try:
-        if request.method == "GET":
-            response: Response = make_response(
-                sServices.getPowerConsumptionData())
-            response.headers.add("Access-Control-Allow-Origin", "*")
-            return response
-    except Exception as err:
-        print(err.args)
-        raise
+    # fetch result from database-server
+    sqlServerResp: SqlServerResultStromzaehler = sServices.getPowerConsumptionData()
+    # create response from it
+    response: Response = make_response(sqlServerResp["data"])
+    response.status_code = sqlServerResp["status_code"]
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    # ...and return it
+    return response

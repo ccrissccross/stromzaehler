@@ -1,1 +1,3 @@
-from .typeddicts import MonitorDict, StromzaehlerTableData
+from .typeddicts import (
+    MonitorDict, StromzaehlerTableData, SqlServerResultStromzaehler
+)

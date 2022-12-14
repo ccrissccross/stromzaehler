@@ -17,3 +17,9 @@ class StromzaehlerTableData(TypedDict):
     datetime: list[dt]
     power_kW: list[float]
     agg_consumption_Wh: list[int]
+
+class SqlServerResult(TypedDict):
+    status_code: int
+
+class SqlServerResultStromzaehler(SqlServerResult):
+    data: StromzaehlerTableData

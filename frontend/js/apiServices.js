@@ -3,7 +3,7 @@
 
 (function() {
 
-    const webAPI = "http://192.168.178.21:5000/";
+    const webAPI = "http://192.168.178.22:443/";
 
     function fetchPowerConsumption() {
         return fetch(
@@ -12,10 +12,11 @@
                 method: "GET", mode: "cors"
             }
         ).then(response => {
-            if (!response.ok) {
-                throw new Error(
-                    `fetch hat nicht funktioniert, das ist die Response vom Server: ${response.json()}`);
-            }
+            // if (!response.ok) {
+            //     // console.log(response.statusText)
+            //     // throw new Error(
+            //     //     `fetch hat nicht funktioniert, das ist die Response vom Server: ${response.json()}`);
+            // }
             return response.json();
         })
     }
