@@ -1,25 +1,47 @@
 from mysql.connector.connection import MySQLConnection
 from mysql.connector.cursor import MySQLCursor
+from numpy import Infinity
 
 
-class CursorZeroW(MySQLCursor):
-    """
-    My own MySQLCursor which allows me to abstract the handling of MySQLConnection
-    objects in conjunction with a MySQLCursor object, since the MySQLCursor relies
-    on the existence of a MySQLConnection.
-    """
+class ZeroWConnection:
+    """Wrapper-class around MySQLConnection"""
 
     def __init__(self) -> None:
-        # setup MySQL connection as member variable, otherwise it gets garbage-
-        # collected in its super()-class, since it is initialized as a weakref!
         self._mysqlConnection: MySQLConnection = MySQLConnection(
             user="pythonConnection",
             host="192.168.178.23",
             database="zeroW",
             autocommit=True)
-        super().__init__(self._mysqlConnection)
+        self._cursor: MySQLCursor
     
-    def reconnectCursor(self) -> None:
-        """does a reconnect to the database itself"""
-        # use MySQLConnection-member of super()-class
-        self._connection.reconnect(attempts=1, delay=0)
+    def getCursor(self, _attempts: float=Infinity, _delay: int=1) -> MySQLCursor:
+        """
+        Checks whether connection to MySQL-Server still exists, if not then it
+        reconnects in an inifite loop (it is okay since it is not blocking any-
+        thing).
+        Finally acquires cursor and returns it.
+        """
+        if not self._mysqlConnection.is_connected():
+            # Wenn keine Verbindung mehr zum MySQL-Server besteht, dann probier
+            # so lange wie nötig, da der Part bottleneck ist. Aufgrund multi-
+            # threading blockiert auch nichts.
+            self._mysqlConnection.reconnect(attempts=_attempts, delay=_delay)
+
+        self._cursor = self._mysqlConnection.cursor()
+        return self._cursor
+
+    def closeCursor(self) -> bool:
+        """simply closes the cursor"""
+        return self._cursor.close()
+
+
+class ConnectionForMonitoring(ZeroWConnection):
+    def __init__(self) -> None:
+        super().__init__()
+
+
+class ConnectionForBackend(ZeroWConnection):
+    def __init__(self) -> None:
+        super().__init__()
+    def getCursor(self, _attempts: float=1, _delay: int=0) -> MySQLCursor:
+        return super().getCursor(_attempts=_attempts, _delay=_delay)

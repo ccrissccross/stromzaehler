@@ -4,7 +4,7 @@ from ....monitoring.src.main.customtypes import SqlServerResultStromzaehler
 from ....monitoring.src.main.database.services import StromzaehlerServices
 
 
-sServices: StromzaehlerServices = StromzaehlerServices()
+sServices: StromzaehlerServices = StromzaehlerServices("backend")
 
 
 app = Flask(__name__)

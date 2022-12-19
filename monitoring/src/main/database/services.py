@@ -6,8 +6,8 @@ from ..customtypes import StromzaehlerTableData, SqlServerResultStromzaehler
 
 class StromzaehlerServices:
     
-    def __init__(self) -> None:
-        self._repo: StromzaehlerRepo = StromzaehlerRepo()
+    def __init__(self, connect_from: str="monitor") -> None:
+        self._repo: StromzaehlerRepo = StromzaehlerRepo(connect_from)
     
     def insertPowerConsumptionData(
         self, values: list[list[Union[dt, float]]]) -> None:

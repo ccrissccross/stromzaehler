@@ -26,7 +26,7 @@ def waitForMinuteChange() -> None:
 def _ingestIntoDb(monitor: MonitorDict, lock: Lock) -> None:
 
     # initialize Service-Layer for 'stromzaehler'-table
-    stromzaehlerServices: StromzaehlerServices = StromzaehlerServices()
+    stromzaehlerServices: StromzaehlerServices = StromzaehlerServices("monitor")
     
     # wird die in die MySQL-DB einzusetzenden Werte/Reihen aufnehmen
     values: list[list[Union[dt, float, int]]] = []
