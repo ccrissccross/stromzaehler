@@ -19,14 +19,14 @@ class HardwareStats(NamedTuple):
     cpuLoad: float
 
 
-def _readHardwareStats() -> HardwareStats:
+def _readHardwareStats(root: str) -> HardwareStats:
     """reads Hardware statistics data and returns them as NamedTuple"""
     
     # ram
     virtMem: float = psutil.virtual_memory().percent
 
     # disk
-    diskUsage: float = psutil.disk_usage('/').percent
+    diskUsage: float = psutil.disk_usage(root).percent
 
     # network
     netIO = psutil.net_io_counters()
@@ -59,6 +59,8 @@ def _monitorRaspberryPi(device: RaspberryPi, monitor: DeviceMonitorDict, lock: L
     # initialisiere Temperatur -und Feuchtesensor
     dht: DHTSensor = device.dhtSensor
 
+    rootDir: str = '/'
+
     while True:
 
         # Prozedur soll immer nur zum Beginn einer neuen Sekunde durchlaufen
@@ -68,7 +70,7 @@ def _monitorRaspberryPi(device: RaspberryPi, monitor: DeviceMonitorDict, lock: L
         temp, rH = dht.getMeasurement()
 
         # read Statistics of Hardware
-        hardwareStats: HardwareStats = _readHardwareStats()
+        hardwareStats: HardwareStats = _readHardwareStats(rootDir)
 
         # fill DeviceMonitorDict
         with lock:
@@ -81,13 +83,15 @@ def _monitorRaspberryPi(device: RaspberryPi, monitor: DeviceMonitorDict, lock: L
 def _monitorWindowsPC(monitor: DeviceMonitorDict, lock: Lock) -> None:
     """if this code runs on a Windows-PC this method gets invoked"""
 
+    rootDir: str = "C:\\"
+
     while True:
 
         # Prozedur soll immer nur zum Beginn einer neuen Sekunde durchlaufen
         curTime: dt = waitForSecondChange()
 
         # read Statistics of Hardware
-        hardwareStats: HardwareStats = _readHardwareStats()
+        hardwareStats: HardwareStats = _readHardwareStats(rootDir)
 
         # fill DeviceMonitorDict
         with lock:

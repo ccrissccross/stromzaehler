@@ -1,5 +1,5 @@
 from datetime import datetime as dt
-from threading import Lock
+from threading import Lock, Thread
 from ..customtypes import PowermeterMonitorDict
 from ..hardware import S0interface, ZeroW
 
@@ -23,7 +23,7 @@ def _fillMonitorDict(_time: dt, monitor: PowermeterMonitorDict, lock: Lock) -> N
 currentTime: dt = dt.now()
 
 
-def powermeterFunc(device: ZeroW, monitor: PowermeterMonitorDict, lock: Lock) -> None:
+def _powermeterFunc(device: ZeroW, monitor: PowermeterMonitorDict, lock: Lock) -> None:
     """
     Main loop waiting for S0-interface to receive a signal, and then storing its
     state in a globally shared python-Dictionary.
@@ -36,3 +36,13 @@ def powermeterFunc(device: ZeroW, monitor: PowermeterMonitorDict, lock: Lock) ->
     while True:
         s0interface.waitForSignal()
         _fillMonitorDict(dt.now(), monitor, lock)
+
+
+def powermeterThread(device: ZeroW, monitor: PowermeterMonitorDict, lock: Lock) -> None:
+    """starts the powermeter-Thread"""
+    powermeterThread: Thread = Thread(
+        target=_powermeterFunc,
+        name="powermeterThread",
+        args=([device, monitor, lock])
+    )
+    powermeterThread.start()

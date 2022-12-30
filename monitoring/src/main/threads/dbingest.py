@@ -256,15 +256,22 @@ def ingestIntoDb(
     ) -> None:
     """starts Database-ingestion Thread"""
 
-    ingestThread: Thread
+    # ingestThread: Thread
     if isinstance(device, ZeroW):
         # aktive Tabelle auswählen auf der operiert werden soll
         hwmonitorServices.setActiveTable(DB.hardwaremonitor.ZeroW)
-        # Thread initialisieren
-        ingestThread = Thread(
-            target=_ingestHardwareMonitorAndPowerConsumptionIntoDb,
-            name="ingestThread",
-            args=([device, monitorDevice, lock, monitorPowermeter]))
+        # # Thread initialisieren
+        # ingestThread = Thread(
+        #     target=_ingestHardwareMonitorAndPowerConsumptionIntoDb,
+        #     name="ingestThread",
+        #     args=([device, monitorDevice, lock, monitorPowermeter])
+        # )
+        if monitorPowermeter is None:
+            raise ValueError("passed parameter 'monitorPowermeter' must not be None!")
+        else:
+            _ingestHardwareMonitorAndPowerConsumptionIntoDb(
+                device, monitorDevice, lock, monitorPowermeter
+            )
     else:
         # aktive Tabelle auswählen auf der operiert werden soll
         if isinstance(device, RaspberryPi4):
@@ -275,9 +282,10 @@ def ingestIntoDb(
             raise TypeError(
                 f"initialisiertes Device enthält einen unbekannten Typ: {type(device)}"
             )
-        ingestThread = Thread(
-            target=_ingestOnlyHardwareMonitorIntoDb,
-            name="",
-            args=([device, monitorDevice, lock])
-        )
-    ingestThread.start()
+        # ingestThread = Thread(
+        #     target=_ingestOnlyHardwareMonitorIntoDb,
+        #     name="",
+        #     args=([device, monitorDevice, lock])
+        # )
+        _ingestOnlyHardwareMonitorIntoDb(device, monitorDevice, lock)
+    # ingestThread.start()

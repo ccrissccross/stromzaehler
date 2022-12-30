@@ -15,8 +15,8 @@ globalLock: Lock = Lock()
 # start Device-monitoring-Thread
 threads.monitorDevice(zeroW, monitorDevice, globalLock)
 
-# start db-ingestion-Thread
-threads.ingestIntoDb(zeroW, monitorDevice, globalLock, monitorPowermeter)
+# start powerMeter-Thread
+threads.powermeterThread(zeroW, monitorPowermeter, globalLock)
 
-# start powerMeter-function as main-Thread
-threads.powermeterFunc(zeroW, monitorPowermeter, globalLock)
+# start db-ingestion-Thread as Main-Thread
+threads.ingestIntoDb(zeroW, monitorDevice, globalLock, monitorPowermeter)
