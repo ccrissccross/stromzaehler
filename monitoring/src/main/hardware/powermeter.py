@@ -6,11 +6,11 @@ from typing import Final
 class S0interface:
 
     def __init__(self) -> None:
-        # nutze Pin-Nummern des 'J8-Headers' (0-40 Bezeichnung)
-        gpio.setmode(gpio.BOARD)
+        # nutze Pin-Nummern-Bezeichnung des Broadcom-Chips (BCM-mode)
+        gpio.setmode(gpio.BCM)
         # Pin konfigurieren:
-        # Pin 3 (SDA -> I2C) hat einen Pull-Up-Widerstand eingebaut
-        self.PIN_NUMBER: Final[int] = 3
+        # BCM-Pin 2 (SDA -> I2C) hat einen Pull-Up-Widerstand eingebaut
+        self.PIN_NUMBER: Final[int] = 2
         gpio.setup(self.PIN_NUMBER, gpio.IN)
     
     def wasteSignal(self) -> None:
