@@ -1,2 +1,3 @@
 from .dbingest import ingestIntoDb
-from .main import mainThread
+from .hardwaremonitor import monitorDevice
+from .powermeter import powermeterFunc

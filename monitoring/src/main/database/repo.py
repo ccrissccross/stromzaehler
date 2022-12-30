@@ -2,44 +2,57 @@ import logging
 
 from datetime import datetime as dt
 from mysql.connector.cursor import MySQLCursor
-from typing import Union
-from .connection import ConnectionForBackend, ConnectionForMonitoring, ZeroWConnection
-from ..customtypes import StromzaehlerTableData
+from typing import Any, Union
+from .connection import DBConnection
+from ..customtypes import StromzaehlerTableData, DB
 
 
-class StromzaehlerRepo:
+class BaseRepo:
 
-    def __init__(self, connect_from: str="monitor") -> None:
+    def __init__(self, database_name: str) -> None:
         # initialize logger...
         self._repoLogger: logging.Logger = logging.getLogger(__name__)
         # custom Cursor-Objekt auf dem die DB-Operationen ausgeführt werden
-        self._connection: ZeroWConnection
-        if connect_from == "monitor":
-            self._connection = ConnectionForMonitoring()
-        elif connect_from == "backend":
-            self._connection = ConnectionForBackend()
-            # ... and now wire the gunicorn-logger to this class' self._repoLogger
-            gunicornLogger: logging.Logger = logging.getLogger('gunicorn.error')
-            self._repoLogger.handlers = gunicornLogger.handlers
-            self._repoLogger.setLevel(gunicornLogger.level)
+        self._connection: DBConnection = DBConnection(database_name)
     
-    def insertManyRows(self, rows: list[list[Union[dt, float]]]) -> None:
-        """inserts many rows into the 'stromzaehler'-table"""
-        sqlStatement: str = (
-            "INSERT INTO stromzaehler"
-            "(datetime, meanPower_perSec_kW, impulses_perSec) "
-            "VALUES "
-            "(%s, %s, %s)"
-        )
-        
+    def setGunicornLogger(self) -> None:
+        """wires the gunicorn-logger to this class' self._repoLogger"""
+        gunicornLogger: logging.Logger = logging.getLogger('gunicorn.error')
+        self._repoLogger.handlers = gunicornLogger.handlers
+        self._repoLogger.setLevel(gunicornLogger.level)
+    
+    def insertManyRows(self, sqlStatement: str, rows: list[list[Any]]) -> None:
         _cursor: MySQLCursor = self._connection.getCursor()
         _cursor.executemany(sqlStatement, rows)
         self._connection.closeCursor()
     
+    def insertSingleRow(self, sqlStatement: str, data: dict[str, Any]) -> None:
+        _cursor: MySQLCursor = self._connection.getCursor()
+        _cursor.execute(sqlStatement, data)
+        self._connection.closeCursor()
+
+
+class StromzaehlerRepo(BaseRepo):
+
+    def __init__(self, table_name: str=DB.stromzaehler.ZeroW) -> None:
+        self._tableName: str = table_name
+        super().__init__("stromzaehler")
+    
+    def insertPowerConsumptionData(self, rows: list[list[Union[dt, float, int]]]) -> None:
+        """inserts many rows into the 'stromzaehler'-table"""
+
+        sqlStatement: str = (
+            f"INSERT INTO {self._tableName} "
+            "(datetime, meanPower_perSec_kW, impulses_perSec) "
+            "VALUES "
+            "(%s, %s, %s)"
+        )
+        super().insertManyRows(sqlStatement, rows)
+    
     def getAllRows(self) -> tuple[bool, StromzaehlerTableData]:
         """returns entire table as list of tuples"""
 
-        sqlStatement: str = ("SELECT * FROM stromzaehler")
+        sqlStatement: str = (f"SELECT * FROM {self._tableName}")
 
         # initialize Result-set
         queryFailed: bool = False
@@ -69,3 +82,29 @@ class StromzaehlerRepo:
             self._connection.closeCursor()
             
         return  queryFailed, queryRes
+
+
+class HardwaremonitorRepo(BaseRepo):
+
+    def __init__(self, table_name: str) -> None:
+        self._tableName: str = table_name
+        super().__init__("hardwaremonitor")
+
+    def insertMonitoringData(self, hwmonitorData: dict[str, Any]) -> None:
+        # base statement / beginning of statement
+        sqlStatement: str = (
+            f"INSERT INTO {self._tableName} "
+        )
+        # get column-names of dictionary as a list
+        columns: list[str] = list(hwmonitorData.keys())
+        # convert list to a string, and get rid of '-chars of the keys
+        strColumns: str = str(columns).replace("'", '')
+        # replace square brackets with round brackets as SQL demands
+        # but strColumns-variable is not overwritten with round brackets!strColumns = strColumns.replace('[','(').replace(']',')')
+        sqlStatement += strColumns.replace('[','(').replace(']',')')
+        # add values-part of statement
+        strValues: str = "VALUES "
+        strValues += strColumns.replace('[', "(%(").replace(", ", ")s, %(").replace(']', ")s)")
+        sqlStatement += strValues
+        #
+        super().insertSingleRow(sqlStatement, hwmonitorData)

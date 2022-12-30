@@ -1,3 +1,6 @@
 from .typeddicts import (
-    MonitorDict, StromzaehlerTableData, SqlServerResultStromzaehler
+    PowermeterMonitorDict, DeviceMonitorDict,
+    StromzaehlerTableData, SqlServerResultStromzaehler
 )
+
+from .dbstructure import DBs as DB

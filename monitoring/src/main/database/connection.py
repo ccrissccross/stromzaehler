@@ -3,14 +3,14 @@ from mysql.connector.cursor import MySQLCursor
 from numpy import Infinity
 
 
-class ZeroWConnection:
+class DBConnection:
     """Wrapper-class around MySQLConnection"""
 
-    def __init__(self) -> None:
+    def __init__(self, database_name: str) -> None:
         self._mysqlConnection: MySQLConnection = MySQLConnection(
             user="pythonConnection",
             host="192.168.178.23",
-            database="zeroW",
+            database=database_name,
             autocommit=True)
         self._cursor: MySQLCursor
     
@@ -33,15 +33,3 @@ class ZeroWConnection:
     def closeCursor(self) -> bool:
         """simply closes the cursor"""
         return self._cursor.close()
-
-
-class ConnectionForMonitoring(ZeroWConnection):
-    def __init__(self) -> None:
-        super().__init__()
-
-
-class ConnectionForBackend(ZeroWConnection):
-    def __init__(self) -> None:
-        super().__init__()
-    def getCursor(self, _attempts: float=1, _delay: int=0) -> MySQLCursor:
-        return super().getCursor(_attempts=_attempts, _delay=_delay)
