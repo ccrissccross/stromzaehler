@@ -1,4 +1,6 @@
-from adafruit_dht import DHTBase, DHT11, DHT22
+import platform
+if platform.system() != "Windows":
+	from adafruit_dht import DHTBase, DHT11, DHT22
 
 
 class DHTSensor:

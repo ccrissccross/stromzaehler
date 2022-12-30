@@ -1,15 +1,24 @@
+import platform
 import psutil
 
 from datetime import datetime as dt
 from threading import Lock, Thread
 from typing import NamedTuple
+from wmi import WMI
 from .waits import waitForSecondChange
 from ..customtypes import DeviceMonitorDict
 from ..hardware import Device, DHTSensor, RaspberryPi, WindowsPC
 
 
+# what os is this running on?
+PLATFORM: str = platform.system()
 
-class HardwareStats(NamedTuple):
+if PLATFORM == "Windows":
+    msacpiThermal: list[object] = WMI(namespace="root\wmi").MSAcpi_ThermalZoneTemperature()
+    noCores: int = len(msacpiThermal)
+
+
+class _HardwareStats(NamedTuple):
     virtMem: float
     diskUsage: float
     netIO_bytes_sent: int
@@ -19,7 +28,16 @@ class HardwareStats(NamedTuple):
     cpuLoad: float
 
 
-def _readHardwareStats(root: str) -> HardwareStats:
+def _readWindowsCPUTemp() -> float:
+    cumTemp: float = 0
+    for thermalZoneObj in msacpiThermal:
+        cumTemp += thermalZoneObj.CurrentTemperature
+    # temperature is in K and additionally needs to be divided by 10
+    meanTemp: float = cumTemp / noCores / 10 - 273.15
+    return round(meanTemp, ndigits=1)
+
+
+def _readHardwareStats(root: str) -> _HardwareStats:
     """reads Hardware statistics data and returns them as NamedTuple"""
     
     # ram
@@ -32,18 +50,22 @@ def _readHardwareStats(root: str) -> HardwareStats:
     netIO = psutil.net_io_counters()
 
     # cpu-stuff
-    cpuTemp: float = psutil.sensors_temperatures()["cpu_thermal"][0].current
+    cpuTemp: float
+    if PLATFORM == "Windows":
+        cpuTemp = _readWindowsCPUTemp()
+    else:
+        cpuTemp = psutil.sensors_temperatures()["cpu_thermal"][0].current
     cpuFreq: float = psutil.cpu_freq().current
     cpuLoad: float = psutil.cpu_percent()
 
-    return HardwareStats(
+    return _HardwareStats(
         virtMem, diskUsage, netIO.bytes_sent, netIO.bytes_recv, cpuTemp,
         cpuFreq, cpuLoad
     )
 
 
-def _fillMonitorDict(monitor: DeviceMonitorDict, hardwareStats: HardwareStats) -> None:
-    """fills the DeviceMonitorDict with HardwareStats-data"""
+def _fillMonitorDict(monitor: DeviceMonitorDict, hardwareStats: _HardwareStats) -> None:
+    """fills the DeviceMonitorDict with _HardwareStats-data"""
     monitor["ram_load_percent"].append(hardwareStats.virtMem)
     monitor["disk_usage_percent"].append(hardwareStats.diskUsage)
     monitor["network_sent_bytes"].append(hardwareStats.netIO_bytes_sent)
@@ -70,7 +92,7 @@ def _monitorRaspberryPi(device: RaspberryPi, monitor: DeviceMonitorDict, lock: L
         temp, rH = dht.getMeasurement()
 
         # read Statistics of Hardware
-        hardwareStats: HardwareStats = _readHardwareStats(rootDir)
+        hardwareStats: _HardwareStats = _readHardwareStats(rootDir)
 
         # fill DeviceMonitorDict
         with lock:
@@ -91,7 +113,7 @@ def _monitorWindowsPC(monitor: DeviceMonitorDict, lock: Lock) -> None:
         curTime: dt = waitForSecondChange()
 
         # read Statistics of Hardware
-        hardwareStats: HardwareStats = _readHardwareStats(rootDir)
+        hardwareStats: _HardwareStats = _readHardwareStats(rootDir)
 
         # fill DeviceMonitorDict
         with lock:

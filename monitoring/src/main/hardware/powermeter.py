@@ -1,4 +1,6 @@
-import RPi.GPIO as gpio
+import platform
+if platform.system() != "Windows":
+	import RPi.GPIO as gpio
 
 from typing import Final
 

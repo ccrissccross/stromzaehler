@@ -1,7 +1,8 @@
-import board
+import platform
+if platform.system() != "Windows":
+	import board
 
 from abc import ABC, abstractmethod
-#from copy import deepcopy
 from .dhtsensors import DHTSensor, DHT11Sensor, DHT22Sensor
 from .powermeter import S0interface
 from ..customtypes import DeviceMonitorDict
