@@ -13,10 +13,21 @@ def _calcPower(_time: dt) -> float:
 
 
 def _fillMonitorDict(_time: dt, monitor: PowermeterMonitorDict, lock: Lock) -> None:
+    """calculates electric power and fills PowermeterMonitorDict"""
+
+    # calculate power before filling monitor-dict
+    power: float = _calcPower(_time)
+
+    # if power is too big (rarely happens under heavy load -> "Sensorprellung")
+    # limit: 3 Phasen à 63A à 240V == 45.36kW
+    if power > 46:
+        # Werte darüber sind unmöglich
+        return
+
     with lock:
         # start filling
         monitor["datetime"].append(_time)
-        monitor["power_kW"].append(_calcPower(_time))
+        monitor["power_kW"].append(power)
 
 
 # initialize time to get clean intervals for calculating consumed electric power

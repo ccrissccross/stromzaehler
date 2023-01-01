@@ -2,7 +2,7 @@ import platform
 if platform.system() != "Windows":
 	import board
 
-from abc import ABC, abstractmethod
+from abc import ABC, abstractmethod, abstractproperty
 from .dhtsensors import DHTSensor, DHT11Sensor, DHT22Sensor
 from .powermeter import S0interface
 from ..customtypes import DeviceMonitorDict
@@ -21,7 +21,12 @@ class Device(ABC):
     @abstractmethod
     def getEmptyDeviceMonitorDict(self) -> DeviceMonitorDict:
         """returns an empty DeviceMonitorDict Dictionary"""
-        pass
+        raise NotImplementedError
+    
+    @abstractproperty
+    def rootDir(self) -> str:
+        """returns the root-dir as a string"""
+        raise NotImplementedError
 
 
 class RaspberryPi(Device):
@@ -40,6 +45,11 @@ class RaspberryPi(Device):
         else:
             raise TypeError(
                 f"definierter Sensor-Typ {self._dht_sensor_type} ist nicht bekannt")
+    
+    @property
+    def rootDir(self) -> str:
+        """returns the root-dir as a string, on Ubuntu-Server -> '/' """
+        return '/'
     
     def getEmptyDeviceMonitorDict(self) -> DeviceMonitorDict:
         """returns an empty DeviceMonitorDict Dictionary"""
@@ -77,6 +87,11 @@ class WindowsPC(Device):
 
     def __init__(self) -> None:
         self._ip_address: str = "192.168.178.22"
+    
+    @property
+    def rootDir(self) -> str:
+        """returns the root-dir as a string, on a Windows-PC -> 'C:\\' """
+        return "C:\\"
     
     def getEmptyDeviceMonitorDict(self) -> DeviceMonitorDict:
         """returns an empty DeviceMonitorDict Dictionary"""

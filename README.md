@@ -5,7 +5,8 @@ reads power-consumption (utilizing the "S0"-interface of my powermeter) and inge
 # On Raspberry Pis:
 1) install RPi.GPIO lib:
    sudo apt-get install RPi.GPIO
-2) install and build libgiod (to be able to use DHT-sensors):
+2) install and build libgiod:
+   (to be able to use DHT-sensors in case libgpiod_pulsein can't be found)
    sudo apt install libgpiod-dev git build-essential
    git clone https://github.com/adafruit/libgpiod_pulsein.git
    cd libgpiod_pulsein/src

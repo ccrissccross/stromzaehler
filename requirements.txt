@@ -1,4 +1,4 @@
-#only on RaspberriPis with DHT Sensor
+#only on RaspberryPis with DHT Sensor
 #adafruit-circuitpython-dht==3.7.8
 certifi==2022.12.7
 charset-normalizer==2.1.1

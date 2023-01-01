@@ -4,7 +4,6 @@ import psutil
 from datetime import datetime as dt
 from threading import Lock, Thread
 from typing import NamedTuple
-from wmi import WMI
 from .waits import waitForSecondChange
 from ..customtypes import DeviceMonitorDict
 from ..hardware import Device, DHTSensor, RaspberryPi, WindowsPC
@@ -14,6 +13,11 @@ from ..hardware import Device, DHTSensor, RaspberryPi, WindowsPC
 PLATFORM: str = platform.system()
 
 if PLATFORM == "Windows":
+    # the following is a Windows OS-specific Interface to WMI (="Windows Management
+    # Instrumentation"), that allows for accessing and control of System-Settings
+    # and statuses
+    from wmi import WMI
+
     msacpiThermal: list[object] = WMI(namespace="root\wmi").MSAcpi_ThermalZoneTemperature()
     noCores: int = len(msacpiThermal)
 
@@ -34,7 +38,13 @@ def _readWindowsCPUTemp() -> float:
         cumTemp += thermalZoneObj.CurrentTemperature
     # temperature is in K and additionally needs to be divided by 10
     meanTemp: float = cumTemp / noCores / 10 - 273.15
-    return round(meanTemp, ndigits=1)
+    return meanTemp
+
+
+def _readUbuntuServerCPUTemp() -> float:
+    # CPU-Temp on a Ubuntu-Server on a RaspberryPi needs to be accessed via
+    # 'cpu_thermal' which then returns a list with only one element. No 
+    return psutil.sensors_temperatures()["cpu_thermal"][0].current
 
 
 def _readHardwareStats(root: str) -> _HardwareStats:
@@ -54,7 +64,7 @@ def _readHardwareStats(root: str) -> _HardwareStats:
     if PLATFORM == "Windows":
         cpuTemp = _readWindowsCPUTemp()
     else:
-        cpuTemp = psutil.sensors_temperatures()["cpu_thermal"][0].current
+        cpuTemp = _readUbuntuServerCPUTemp()
     cpuFreq: float = psutil.cpu_freq().current
     cpuLoad: float = psutil.cpu_percent()
 
@@ -81,7 +91,8 @@ def _monitorRaspberryPi(device: RaspberryPi, monitor: DeviceMonitorDict, lock: L
     # initialisiere Temperatur -und Feuchtesensor
     dht: DHTSensor = device.dhtSensor
 
-    rootDir: str = '/'
+    # -> '/'
+    rootDir: str = device.rootDir
 
     while True:
 
@@ -102,10 +113,11 @@ def _monitorRaspberryPi(device: RaspberryPi, monitor: DeviceMonitorDict, lock: L
             _fillMonitorDict(monitor, hardwareStats)
 
 
-def _monitorWindowsPC(monitor: DeviceMonitorDict, lock: Lock) -> None:
+def _monitorWindowsPC(device: WindowsPC, monitor: DeviceMonitorDict, lock: Lock) -> None:
     """if this code runs on a Windows-PC this method gets invoked"""
 
-    rootDir: str = "C:\\"
+    # -> 'C:\\'
+    rootDir: str = device.rootDir
 
     while True:
 
@@ -129,7 +141,7 @@ def monitorDevice(device: Device, monitor: DeviceMonitorDict, lock: Lock) -> Non
     if isinstance(device, RaspberryPi):
         monitorDeviceThread = Thread(target=_monitorRaspberryPi, args=([device, monitor, lock]))
     elif isinstance(device, WindowsPC):
-        monitorDeviceThread = Thread(target=_monitorWindowsPC, args=([monitor, lock]))
+        monitorDeviceThread = Thread(target=_monitorWindowsPC, args=([device, monitor, lock]))
     else:
         raise TypeError(
             "Device-Type is not correct. It must be either of type <RaspberryPi> "
